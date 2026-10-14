@@ -1,0 +1,36 @@
+/** Remove trailing `.gcode.3mf` / `.3mf` pairs (handles doubled local names). */
+export function strip3mfBaseName(fileName: string): string {
+	let stem = fileName;
+	let progress = true;
+	while (progress) {
+		progress = false;
+		if (/\.gcode\.3mf$/i.test(stem)) {
+			stem = stem.slice(0, -'.gcode.3mf'.length);
+			progress = true;
+		} else if (/\.3mf$/i.test(stem)) {
+			stem = stem.slice(0, -'.3mf'.length);
+			progress = true;
+		}
+	}
+	return stem;
+}
+
+export function flowOutputFileName(firstFileName: string): string {
+	return `${strip3mfBaseName(firstFileName)}.flow.3mf`;
+}
+
+function sanitizeFileName(value: string): string {
+	return value
+		.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+/** Keep a user-edited download name, and make sure it is a .3mf file. */
+export function normalizeOutputFileName(name: string, fallback: string): string {
+	const cleaned = sanitizeFileName(name);
+	const base = cleaned || sanitizeFileName(fallback) || 'print.flow.3mf';
+	if (/^\.3mf$/i.test(base)) return 'print.flow.3mf';
+	if (/\.3mf$/i.test(base)) return base;
+	return `${base}.3mf`;
+}

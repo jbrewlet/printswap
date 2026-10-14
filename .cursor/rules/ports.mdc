@@ -1,0 +1,7 @@
+---
+description: Local dev server port for this repo
+alwaysApply: true
+---
+
+- Never use port 3000 for this repo. It is reserved for the airshop project; never start, stop, or kill anything on 3000 from here.
+- This repo's dev/preview server runs on port 3100 (`strictPort` in `vite.config.ts`). If 3100 is held by a stale server from this repo, restart it; if held by anything else, ask first.
