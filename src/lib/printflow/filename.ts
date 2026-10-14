@@ -1,4 +1,4 @@
-/** Remove trailing `.gcode.3mf` / `.3mf` pairs (handles doubled local names). */
+/** Remove trailing `.gcode.3mf` / `.3mf` pairs, including a suffix appended twice. */
 export function strip3mfBaseName(fileName: string): string {
 	let stem = fileName;
 	let progress = true;
@@ -20,10 +20,13 @@ export function flowOutputFileName(firstFileName: string): string {
 }
 
 function sanitizeFileName(value: string): string {
-	return value
-		.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '')
-		.replace(/\s+/g, ' ')
-		.trim();
+	let cleaned = '';
+	for (const char of value) {
+		const code = char.codePointAt(0) ?? 0;
+		if (code <= 0x1f || '\\/:*?"<>|'.includes(char)) continue;
+		cleaned += char;
+	}
+	return cleaned.replace(/\s+/g, ' ').trim();
 }
 
 /** Keep a user-edited download name, and make sure it is a .3mf file. */

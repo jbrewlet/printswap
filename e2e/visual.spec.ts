@@ -1,10 +1,10 @@
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from '@playwright/test';
+import { localSample3mfPath } from './local-sample.ts';
 
 const SHOTS = '/tmp/printswap-shots';
-const REAL_3MF =
-	'sample.gcode.3mf';
+const REAL_3MF = localSample3mfPath();
 
 test('capture UI screenshots (light, dark, empty, loaded)', async ({ page, browser }) => {
 	mkdirSync(SHOTS, { recursive: true });
@@ -13,7 +13,7 @@ test('capture UI screenshots (light, dark, empty, loaded)', async ({ page, brows
 	await page.goto('/');
 	await page.screenshot({ path: join(SHOTS, 'empty-light.png'), fullPage: true });
 
-	if (existsSync(REAL_3MF)) {
+	if (REAL_3MF) {
 		await page.getByTestId('file-input').setInputFiles(REAL_3MF);
 		await page.waitForTimeout(500);
 		await page.screenshot({ path: join(SHOTS, 'loaded-light.png'), fullPage: true });
@@ -24,7 +24,7 @@ test('capture UI screenshots (light, dark, empty, loaded)', async ({ page, brows
 	await darkPage.goto('/');
 	await darkPage.screenshot({ path: join(SHOTS, 'empty-dark.png'), fullPage: true });
 
-	if (existsSync(REAL_3MF)) {
+	if (REAL_3MF) {
 		await darkPage.getByTestId('file-input').setInputFiles(REAL_3MF);
 		await darkPage.waitForTimeout(500);
 		await darkPage.screenshot({ path: join(SHOTS, 'loaded-dark.png'), fullPage: true });

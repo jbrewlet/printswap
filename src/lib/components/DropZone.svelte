@@ -161,7 +161,7 @@
 					<rect x="5" y="11" width="14" height="9" rx="2" stroke-width="2" />
 					<path stroke-linecap="round" stroke-width="2" d="M8 11V8a4 4 0 018 0v3" />
 				</svg>
-				Files never leave your Mac
+				Files never leave this browser
 			</p>
 		{:else}
 			<span

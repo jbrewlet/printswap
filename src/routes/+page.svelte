@@ -142,10 +142,10 @@
 				<p class="truncate text-xs text-ink-3">Plate-swap queues for Bambu Lab A1</p>
 			</div>
 			<span
-				class="ml-auto hidden items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-medium text-ink-2 sm:inline-flex"
+				class="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-medium text-ink-2"
 			>
 				<span class="size-1.5 rounded-full bg-brand"></span>
-				Runs locally
+				Nothing uploaded
 			</span>
 		</div>
 	</header>
@@ -196,6 +196,9 @@
 				<p class="mx-auto mt-4 max-w-xl text-base text-pretty text-ink-2 sm:text-lg">
 					Merge sliced plates into one job with a plate swap after every print, so your A1 runs
 					back-to-back without you.
+				</p>
+				<p class="mx-auto mt-3 max-w-xl text-sm text-pretty text-ink-3">
+					Sliced files are read and merged in this browser. Nothing is uploaded.
 				</p>
 
 				<div class="mt-8 sm:mt-10">

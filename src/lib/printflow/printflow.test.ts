@@ -141,20 +141,17 @@ describe('export', () => {
 
 describe('filename', () => {
 	it('strips .gcode.3mf suffixes for flow output name', () => {
-		expect(flowOutputFileName('sample.gcode.3mf')).toBe('sample.flow.3mf');
-		expect(flowOutputFileName('sample-plate.gcode.3mf.gcode.3mf')).toBe('sample-plate.flow.3mf');
+		expect(flowOutputFileName('plate.gcode.3mf')).toBe('plate.flow.3mf');
+		expect(flowOutputFileName('plate.gcode.3mf.gcode.3mf')).toBe('plate.flow.3mf');
 	});
 
 	it('keeps an edited output name and ensures a .3mf suffix', () => {
-		expect(normalizeOutputFileName('sample-plate.flow.3mf', 'fallback.flow.3mf')).toBe(
-			'sample-plate.flow.3mf'
-		);
-		expect(normalizeOutputFileName('night run', 'sample-plate.flow.3mf')).toBe('night run.3mf');
-		expect(normalizeOutputFileName('custom.3MF', 'sample-plate.flow.3mf')).toBe('custom.3MF');
-		expect(normalizeOutputFileName('bad/name:here', 'sample-plate.flow.3mf')).toBe(
-			'badnamehere.3mf'
-		);
-		expect(normalizeOutputFileName('   ', 'sample-plate.flow.3mf')).toBe('sample-plate.flow.3mf');
+		expect(normalizeOutputFileName('plate.flow.3mf', 'fallback.flow.3mf')).toBe('plate.flow.3mf');
+		expect(normalizeOutputFileName('night run', 'plate.flow.3mf')).toBe('night run.3mf');
+		expect(normalizeOutputFileName('custom.3MF', 'plate.flow.3mf')).toBe('custom.3MF');
+		expect(normalizeOutputFileName('bad/name:here', 'plate.flow.3mf')).toBe('badnamehere.3mf');
+		expect(normalizeOutputFileName('a\u0000b', 'fallback.flow.3mf')).toBe('ab.3mf');
+		expect(normalizeOutputFileName('   ', 'plate.flow.3mf')).toBe('plate.flow.3mf');
 		expect(normalizeOutputFileName('', '')).toBe('print.flow.3mf');
 	});
 });

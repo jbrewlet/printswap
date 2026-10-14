@@ -1,13 +1,15 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import JSZip from 'jszip';
 import { expect, test } from '@playwright/test';
 import { SWAP_GCODE_BLOCK } from '../src/lib/constants/swap-gcode.ts';
+import { flowOutputFileName } from '../src/lib/printflow/filename.ts';
+import { localSample3mfPath } from './local-sample.ts';
 
-const REAL_3MF =
-	'sample.gcode.3mf';
+const REAL_3MF = localSample3mfPath();
 
 test.describe('Generate flow export', () => {
-	test.skip(!existsSync(REAL_3MF), 'local sample 3MF not available on this machine');
+	test.skip(!REAL_3MF, 'local sample 3MF is not configured');
 
 	test('uploads, exports once, and embeds swap blocks', async ({ page }) => {
 		const consoleErrors: string[] = [];
@@ -35,7 +37,7 @@ test.describe('Generate flow export', () => {
 		const download = await downloadPromise;
 
 		expect(downloadCount).toBe(1);
-		expect(download.suggestedFilename()).toBe('sample-plate.flow.3mf');
+		expect(download.suggestedFilename()).toBe(flowOutputFileName(basename(REAL_3MF)));
 
 		const tempPath = await download.path();
 		expect(tempPath).toBeTruthy();

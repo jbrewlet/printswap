@@ -1,6 +1,18 @@
 # Printflow (PrintSwap)
 
-Offline browser tool for merging Bambu Studio sliced `.gcode.3mf` / `.3mf` plates with PrintFlow3D bed-swap G-code. Files stay on your machine; nothing is uploaded.
+Offline browser tool for merging Bambu Studio sliced `.gcode.3mf` / `.3mf` plates with PrintFlow3D bed-swap G-code. Files stay in the browser that opens the page; nothing is uploaded.
+
+## Hosted page
+
+GitHub Actions publishes the static build to GitHub Pages on every push to `main`, and when that workflow is run manually. The deploy job starts only after check, test, lint, and the production build succeed in the same workflow. There is no local deploy command. Open:
+
+https://jbrewlet.github.io/printswap/
+
+That address serves the app only. Dropping a sliced plate reads it with the File API, merges it locally, and downloads a `.flow.3mf`. The plate is not sent to GitHub or any other server.
+
+The published page is public on the internet, even while this repository stays private. Anyone with the link can open the tool, and the page's JavaScript includes the plate-swap G-code. Plate files themselves never leave the browser.
+
+A private personal repository needs GitHub Pro before Pages will publish. The site URL above starts working after the Pages workflow on `main` succeeds.
 
 ## Run locally
 

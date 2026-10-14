@@ -1,8 +1,10 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import JSZip from 'jszip';
 import SparkMD5 from 'spark-md5';
 import { describe, expect, it } from 'vitest';
 import { MODEL_SETTINGS_SWAP, SWAP_GCODE_BLOCK } from '#lib/constants/swap-gcode.js';
+import { localSample3mfPath } from '../../../e2e/local-sample.ts';
 import {
 	buildExportPayload,
 	countSwapInsertionsFromJobs,
@@ -12,16 +14,19 @@ import { flowOutputFileName } from './filename.js';
 import { ingest3mfFile } from './ingest.js';
 import { entriesFromProcessedFile } from './queue.js';
 
-const REAL_FILE =
-	'sample.gcode.3mf';
+const REAL_FILE = localSample3mfPath();
 
 describe('real local 3MF (manual sanity)', () => {
-	it.skipIf(!existsSync(REAL_FILE))('ingest + export local sample-plate 3MF', async () => {
+	it.skipIf(!REAL_FILE)('ingest + export a local sliced 3MF', async () => {
+		const sampleName = basename(REAL_FILE);
 		const buf = readFileSync(REAL_FILE);
-		const file = new File([buf], 'sample-plate.gcode.3mf.gcode.3mf', { type: 'application/zip' });
+		const file = new File([buf], sampleName, { type: 'application/zip' });
 		const processed = await ingest3mfFile(file);
 
-		expect(flowOutputFileName(processed.fileName)).toBe('sample-plate.flow.3mf');
+		expect(processed.fileName).toBe(sampleName);
+		const outputName = flowOutputFileName(processed.fileName);
+		expect(outputName.endsWith('.flow.3mf')).toBe(true);
+		expect(outputName.includes('.gcode')).toBe(false);
 		expect(processed.plateDetails.length).toBeGreaterThan(0);
 		for (const plate of processed.plateDetails) {
 			expect(plate.totalSeconds).toBeGreaterThan(0);
@@ -31,7 +36,10 @@ describe('real local 3MF (manual sanity)', () => {
 		const queue = entriesFromProcessedFile(processed);
 		const payload = await buildExportPayload(queue, 1);
 		const blob = await exportFlow3mfFromPayload(payload);
-		writeFileSync('/tmp/sample-plate.flow.3mf', Buffer.from(await blob.arrayBuffer()));
+		writeFileSync(
+			join('/tmp', flowOutputFileName(sampleName)),
+			Buffer.from(await blob.arrayBuffer())
+		);
 
 		const zip = await JSZip.loadAsync(await blob.arrayBuffer());
 		expect(zip.file('Metadata/plate_2.gcode')).toBeNull();
