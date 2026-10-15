@@ -8,7 +8,7 @@ GitHub Actions publishes the static build to GitHub Pages on every push to `main
 
 https://jbrewlet.github.io/printswap/
 
-That address serves the app only. Dropping a sliced plate reads it with the File API, merges it locally, and downloads a `.flow.3mf`. The plate is not sent to GitHub or any other server.
+That address serves the app only. Dropping a sliced plate reads it with the File API, merges it locally, and downloads a `.swap.3mf`. The plate is not sent to GitHub or any other server.
 
 The published page is public on the internet, even while this repository stays private. Anyone with the link can open the tool, and the page's JavaScript includes the plate-swap G-code. Plate files themselves never leave the browser.
 
@@ -34,7 +34,7 @@ npm start
 1. Slice your model in **Bambu Studio** and export the sliced plate (`.gcode.3mf`).
 2. Drop one or more sliced 3MF files into Printflow.
 3. Set per-plate **Repeat** counts and global **Loops**.
-4. Click **Generate** to download `{name}.flow.3mf` (same naming as Printflow 0.1.0).
+4. Click **Generate** to download `{name}.swap.3mf`.
 5. Open the merged file in Bambu Studio and print on a Bambu A1 with the PrintFlow3D plate changer.
 
 ## Scripts

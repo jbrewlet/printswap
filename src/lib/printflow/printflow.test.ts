@@ -9,11 +9,13 @@ import {
 } from './ams-strip.js';
 import {
 	buildSliceInfoConfig,
+	buildSwapModelSettings,
+	collectExportFilaments,
 	countSwapInsertionsFromJobs,
 	exportFlow3mfFromPayload,
 	type ExportJob
 } from './export-3mf.js';
-import { flowOutputFileName, normalizeOutputFileName } from './filename.js';
+import { normalizeOutputFileName, swapOutputFileName } from './filename.js';
 import { ingest3mfFile } from './ingest.js';
 import { computeQueueStats, computeSlotStats } from './stats.js';
 import { extractEstimatedTimeFromGcode, parseEstimatedTimeSeconds } from './time.js';
@@ -39,6 +41,8 @@ describe('ingest', () => {
 		const processed = await ingest3mfFile(file);
 		expect(processed.plateDetails).toHaveLength(1);
 		expect(processed.plateDetails[0].filaments[0].type).toBe('PETG');
+		expect(processed.plateDetails[0].filaments[0].sliceAttributes?.tray_info_idx).toBe('GFG99');
+		expect(processed.plateDetails[0].filaments[0].sliceAttributes?.used_for_object).toBe('true');
 		expect(processed.plateDetails[0].totalSeconds).toBe(7510);
 	});
 });
@@ -52,6 +56,7 @@ describe('stats', () => {
 				fileName: 'a.gcode.3mf',
 				zip: new JSZip(),
 				plateLabel: 'Plate 1',
+				plateIndex: 0,
 				plate: {
 					gcodeFilePath: 'Metadata/plate_1.gcode',
 					gcodeContent: '',
@@ -94,6 +99,80 @@ describe('AMS stripping', () => {
 	});
 });
 
+describe('slice info filaments', () => {
+	it('keeps AMS identity and scales usage by repeats and loops', () => {
+		const filaments = collectExportFilaments(
+			[
+				{
+					gcodeContent: '',
+					repeatCount: 2,
+					filaments: [
+						{
+							id: '1',
+							type: 'PETG',
+							color: '#F75403',
+							used_m: '10.5',
+							used_g: '32.1',
+							sliceAttributes: {
+								id: '1',
+								tray_info_idx: 'GFG99',
+								type: 'PETG',
+								color: '#F75403',
+								used_m: '10.5',
+								used_g: '32.1',
+								used_for_object: 'true',
+								volume_type: 'Standard'
+							}
+						}
+					]
+				}
+			],
+			2
+		);
+		expect(filaments[0].used_m).toBe('42.00');
+		expect(filaments[0].used_g).toBe('128.40');
+
+		const slice = buildSliceInfoConfig(
+			`<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <plate>
+    <metadata key="index" value="2"/>
+    <metadata key="weight" value="32.1"/>
+    <metadata key="filament_maps" value="1"/>
+  </plate>
+</config>`,
+			filaments
+		);
+		expect(slice).toContain('tray_info_idx="GFG99"');
+		expect(slice).toContain('type="PETG"');
+		expect(slice).toContain('color="#F75403"');
+		expect(slice).toContain('used_m="42.00"');
+		expect(slice).toContain('used_g="128.40"');
+		expect(slice).toContain('used_for_object="true"');
+		expect(slice).toContain('volume_type="Standard"');
+		expect(slice).toContain('key="filament_maps" value="1"');
+		expect(slice).toContain('key="weight" value="128.40"');
+		expect(slice).toContain('key="index" value="1"');
+	});
+
+	it('copies filament map metadata onto the swap plate', () => {
+		const settings = buildSwapModelSettings(`<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <plate>
+    <metadata key="plater_id" value="1"/>
+    <metadata key="filament_map_mode" value="Auto For Flush"/>
+    <metadata key="filament_maps" value="1"/>
+    <metadata key="filament_volume_maps" value="0"/>
+  </plate>
+</config>`);
+		expect(settings).toContain('plater_name" value="SWAP"');
+		expect(settings).toContain('filament_map_mode" value="Auto For Flush"');
+		expect(settings).toContain('filament_maps" value="1"');
+		expect(settings).toContain('filament_volume_maps" value="0"');
+		expect(buildSwapModelSettings(null)).toBe(MODEL_SETTINGS_SWAP);
+	});
+});
+
 describe('export', () => {
 	it('writes merged gcode, md5, rewritten xml, and removes old plate gcodes', async () => {
 		const baseBlob = await buildSynthetic3mf({ includeExtraPlateGcode: true });
@@ -124,8 +203,10 @@ describe('export', () => {
 		expect(modelSettings).toBe(MODEL_SETTINGS_SWAP);
 
 		const sliceInfo = await zip.file('Metadata/slice_info.config')?.async('string');
-		expect(sliceInfo).toContain('used_m="0"');
-		expect(sliceInfo).toContain('used_g="0"');
+		expect(sliceInfo).toContain('type="PETG"');
+		expect(sliceInfo).toContain('color="#f00"');
+		expect(sliceInfo).toContain('used_m="1.00"');
+		expect(sliceInfo).toContain('used_g="1.00"');
 
 		const merged = await zip.file('Metadata/plate_1.gcode')?.async('string');
 		expect(merged).toBeTruthy();
@@ -140,18 +221,18 @@ describe('export', () => {
 });
 
 describe('filename', () => {
-	it('strips .gcode.3mf suffixes for flow output name', () => {
-		expect(flowOutputFileName('plate.gcode.3mf')).toBe('plate.flow.3mf');
-		expect(flowOutputFileName('plate.gcode.3mf.gcode.3mf')).toBe('plate.flow.3mf');
+	it('strips .gcode.3mf suffixes for swap output name', () => {
+		expect(swapOutputFileName('plate.gcode.3mf')).toBe('plate.swap.3mf');
+		expect(swapOutputFileName('plate.gcode.3mf.gcode.3mf')).toBe('plate.swap.3mf');
 	});
 
 	it('keeps an edited output name and ensures a .3mf suffix', () => {
-		expect(normalizeOutputFileName('plate.flow.3mf', 'fallback.flow.3mf')).toBe('plate.flow.3mf');
-		expect(normalizeOutputFileName('night run', 'plate.flow.3mf')).toBe('night run.3mf');
-		expect(normalizeOutputFileName('custom.3MF', 'plate.flow.3mf')).toBe('custom.3MF');
-		expect(normalizeOutputFileName('bad/name:here', 'plate.flow.3mf')).toBe('badnamehere.3mf');
-		expect(normalizeOutputFileName('a\u0000b', 'fallback.flow.3mf')).toBe('ab.3mf');
-		expect(normalizeOutputFileName('   ', 'plate.flow.3mf')).toBe('plate.flow.3mf');
-		expect(normalizeOutputFileName('', '')).toBe('print.flow.3mf');
+		expect(normalizeOutputFileName('plate.swap.3mf', 'fallback.swap.3mf')).toBe('plate.swap.3mf');
+		expect(normalizeOutputFileName('night run', 'plate.swap.3mf')).toBe('night run.3mf');
+		expect(normalizeOutputFileName('custom.3MF', 'plate.swap.3mf')).toBe('custom.3MF');
+		expect(normalizeOutputFileName('bad/name:here', 'plate.swap.3mf')).toBe('badnamehere.3mf');
+		expect(normalizeOutputFileName('a\u0000b', 'fallback.swap.3mf')).toBe('ab.3mf');
+		expect(normalizeOutputFileName('   ', 'plate.swap.3mf')).toBe('plate.swap.3mf');
+		expect(normalizeOutputFileName('', '')).toBe('print.swap.3mf');
 	});
 });

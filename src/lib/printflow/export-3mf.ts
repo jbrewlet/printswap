@@ -15,21 +15,118 @@ export type ExportPayload = {
 	baseZipArrayBuffer: ArrayBuffer;
 	projectSettingsText: string | null;
 	/** Pre-built on the main thread so the worker avoids DOM XML APIs. */
+	modelSettingsText?: string;
 	sliceInfoText: string;
 	jobs: ExportJob[];
 	loopCount: number;
 };
 
-function collectUniqueFilamentsFromJobs(jobs: ExportJob[]): FilamentUsage[] {
-	const unique: FilamentUsage[] = [];
+const FILAMENT_ATTRIBUTE_ORDER = [
+	'id',
+	'tray_info_idx',
+	'type',
+	'color',
+	'used_m',
+	'used_g'
+] as const;
+
+const MODEL_FILAMENT_MAP_KEYS = [
+	'filament_map_mode',
+	'filament_maps',
+	'filament_volume_maps',
+	'limit_filament_maps'
+] as const;
+
+export function formatFilamentAmount(value: number): string {
+	if (!Number.isFinite(value)) {
+		return '0.00';
+	}
+	return value.toFixed(2);
+}
+
+/** Merge filaments by slot and scale usage by each plate's repeat count and the loop count. */
+export function collectExportFilaments(jobs: ExportJob[], loopCount: number): FilamentUsage[] {
+	const byId = new Map<string, { filament: FilamentUsage; meters: number; grams: number }>();
+	const loops = Math.max(0, loopCount);
+
 	for (const job of jobs) {
+		if (job.repeatCount <= 0 || loops === 0) {
+			continue;
+		}
+		const scale = job.repeatCount * loops;
 		for (const filament of job.filaments) {
-			if (!unique.some((item) => item.id === filament.id)) {
-				unique.push(filament);
+			const meters = (parseFloat(filament.used_m) || 0) * scale;
+			const grams = (parseFloat(filament.used_g) || 0) * scale;
+			const existing = byId.get(filament.id);
+			if (!existing) {
+				byId.set(filament.id, { filament, meters, grams });
+			} else {
+				existing.meters += meters;
+				existing.grams += grams;
 			}
 		}
 	}
-	return unique;
+
+	return [...byId.values()].map(({ filament, meters, grams }) => ({
+		...filament,
+		used_m: formatFilamentAmount(meters),
+		used_g: formatFilamentAmount(grams)
+	}));
+}
+
+function filamentAttributes(filament: FilamentUsage): Record<string, string> {
+	const attributes: Record<string, string> = { ...(filament.sliceAttributes ?? {}) };
+	attributes.id = filament.id;
+	if (filament.type) {
+		attributes.type = filament.type;
+	}
+	if (filament.color) {
+		attributes.color = filament.color;
+	}
+	attributes.used_m = formatFilamentAmount(parseFloat(filament.used_m) || 0);
+	attributes.used_g = formatFilamentAmount(parseFloat(filament.used_g) || 0);
+	return attributes;
+}
+
+function escapeXmlAttribute(value: string): string {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('"', '&quot;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;');
+}
+
+/**
+ * Keep the single SWAP plate, and copy the source plate's filament map.
+ * Send uses that map to offer AMS Lite slots. Print can recover it from the gcode header.
+ */
+export function buildSwapModelSettings(originalXml: string | null | undefined): string {
+	if (!originalXml) {
+		return MODEL_SETTINGS_SWAP;
+	}
+	const doc = parseXmlDocument(originalXml);
+	const plate = doc?.getElementsByTagName('plate')[0];
+	if (!plate) {
+		return MODEL_SETTINGS_SWAP;
+	}
+
+	const lines: string[] = [];
+	for (const key of MODEL_FILAMENT_MAP_KEYS) {
+		const value = plate.querySelector(`[key='${key}']`)?.getAttribute('value');
+		if (!value) {
+			continue;
+		}
+		lines.push(`    <metadata key="${key}" value="${escapeXmlAttribute(value)}"/>`);
+	}
+	if (lines.length === 0) {
+		return MODEL_SETTINGS_SWAP;
+	}
+
+	const anchor = '    <metadata key="locked" value="false"/>\n';
+	if (!MODEL_SETTINGS_SWAP.includes(anchor)) {
+		return MODEL_SETTINGS_SWAP;
+	}
+	return MODEL_SETTINGS_SWAP.replace(anchor, `${anchor}${lines.join('\n')}\n`);
 }
 
 export function buildSliceInfoConfig(originalXml: string, filaments: FilamentUsage[]): string {
@@ -53,12 +150,29 @@ export function buildSliceInfoConfig(originalXml: string, filaments: FilamentUsa
 	}
 
 	if (plate) {
+		const weightMeta = plate.querySelector("[key='weight']");
+		if (weightMeta && filaments.length > 0) {
+			const totalGrams = filaments.reduce(
+				(sum, filament) => sum + (parseFloat(filament.used_g) || 0),
+				0
+			);
+			weightMeta.setAttribute('value', formatFilamentAmount(totalGrams));
+		}
+
 		for (const filament of filaments) {
 			const node = doc.createElement('filament');
+			const attributes = filamentAttributes(filament);
+			const ordered = [
+				...FILAMENT_ATTRIBUTE_ORDER.filter((key) => key in attributes),
+				...Object.keys(attributes).filter(
+					(key) =>
+						!FILAMENT_ATTRIBUTE_ORDER.includes(key as (typeof FILAMENT_ATTRIBUTE_ORDER)[number])
+				)
+			];
+			for (const key of ordered) {
+				node.setAttribute(key, attributes[key]);
+			}
 			plate.appendChild(node);
-			node.setAttribute('id', filament.id);
-			node.setAttribute('used_m', '0');
-			node.setAttribute('used_g', '0');
 		}
 	}
 
@@ -93,6 +207,7 @@ export async function exportFlow3mfFromPayload(
 	onProgress?: ExportProgressCallback
 ): Promise<Blob> {
 	const { baseZipArrayBuffer, projectSettingsText, sliceInfoText, jobs, loopCount } = payload;
+	const modelSettingsText = payload.modelSettingsText ?? MODEL_SETTINGS_SWAP;
 	if (jobs.length === 0) {
 		throw new Error('No files to export.');
 	}
@@ -113,7 +228,7 @@ export async function exportFlow3mfFromPayload(
 		outputZip.file('Metadata/project_settings.config', projectSettingsText);
 	}
 
-	outputZip.file('Metadata/model_settings.config', MODEL_SETTINGS_SWAP);
+	outputZip.file('Metadata/model_settings.config', modelSettingsText);
 	outputZip.file('Metadata/slice_info.config', sliceInfoText);
 
 	onProgress?.(25);
@@ -187,11 +302,14 @@ export async function buildExportPayload(
 	if (!originalSliceInfo) {
 		throw new Error('Metadata/slice_info.config not found in export base archive.');
 	}
+	const originalModelSettings =
+		(await queue[0].zip.file('Metadata/model_settings.config')?.async('text')) ?? null;
 
 	return {
 		baseZipArrayBuffer,
 		projectSettingsText,
-		sliceInfoText: buildSliceInfoConfig(originalSliceInfo, collectUniqueFilamentsFromJobs(jobs)),
+		modelSettingsText: buildSwapModelSettings(originalModelSettings),
+		sliceInfoText: buildSliceInfoConfig(originalSliceInfo, collectExportFilaments(jobs, loopCount)),
 		jobs,
 		loopCount
 	};

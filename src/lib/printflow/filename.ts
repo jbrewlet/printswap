@@ -15,8 +15,8 @@ export function strip3mfBaseName(fileName: string): string {
 	return stem;
 }
 
-export function flowOutputFileName(firstFileName: string): string {
-	return `${strip3mfBaseName(firstFileName)}.flow.3mf`;
+export function swapOutputFileName(firstFileName: string): string {
+	return `${strip3mfBaseName(firstFileName)}.swap.3mf`;
 }
 
 function sanitizeFileName(value: string): string {
@@ -32,8 +32,8 @@ function sanitizeFileName(value: string): string {
 /** Keep a user-edited download name, and make sure it is a .3mf file. */
 export function normalizeOutputFileName(name: string, fallback: string): string {
 	const cleaned = sanitizeFileName(name);
-	const base = cleaned || sanitizeFileName(fallback) || 'print.flow.3mf';
-	if (/^\.3mf$/i.test(base)) return 'print.flow.3mf';
+	const base = cleaned || sanitizeFileName(fallback) || 'print.swap.3mf';
+	if (/^\.3mf$/i.test(base)) return 'print.swap.3mf';
 	if (/\.3mf$/i.test(base)) return base;
 	return `${base}.3mf`;
 }

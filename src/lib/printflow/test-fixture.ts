@@ -14,7 +14,7 @@ const SLICE_INFO = `<?xml version="1.0" encoding="UTF-8"?>
 <config>
   <plate>
     <metadata key="index" value="1"/>
-    <filament id="1" type="PETG" color="#FF8000" used_m="10.5" used_g="32.1"/>
+    <filament id="1" tray_info_idx="GFG99" type="PETG" color="#FF8000" used_m="10.5" used_g="32.1" group_id="0" nozzle_diameter="0.40" volume_type="Standard" used_for_object="true" used_for_support="false"/>
   </plate>
 </config>`;
 

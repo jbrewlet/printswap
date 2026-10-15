@@ -1,13 +1,27 @@
 import type { ExportJob, ExportPayload } from './export-3mf.js';
 import type { FilamentUsage, QueueEntry } from './types.js';
 
+function plainSliceAttributes(
+	attributes: Record<string, string> | undefined
+): Record<string, string> | undefined {
+	if (!attributes) {
+		return undefined;
+	}
+	const plain: Record<string, string> = {};
+	for (const [key, value] of Object.entries(attributes)) {
+		plain[String(key)] = String(value);
+	}
+	return plain;
+}
+
 export function plainFilament(filament: FilamentUsage): FilamentUsage {
 	return {
 		id: String(filament.id),
 		type: String(filament.type),
 		color: String(filament.color),
 		used_m: String(filament.used_m),
-		used_g: String(filament.used_g)
+		used_g: String(filament.used_g),
+		sliceAttributes: plainSliceAttributes(filament.sliceAttributes)
 	};
 }
 
@@ -24,6 +38,7 @@ export function cloneExportPayloadForWorker(payload: ExportPayload): ExportPaylo
 	return {
 		baseZipArrayBuffer: payload.baseZipArrayBuffer.slice(0),
 		projectSettingsText: payload.projectSettingsText,
+		modelSettingsText: payload.modelSettingsText,
 		sliceInfoText: payload.sliceInfoText,
 		loopCount: payload.loopCount,
 		jobs: payload.jobs.map(plainExportJob)

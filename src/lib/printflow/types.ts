@@ -6,6 +6,8 @@ export type FilamentUsage = {
 	color: string;
 	used_m: string;
 	used_g: string;
+	/** Original slice_info `<filament>` attributes. Send matches AMS Lite from these. */
+	sliceAttributes?: Record<string, string>;
 };
 
 export type PlateDetail = {
@@ -35,6 +37,8 @@ export type QueueEntry = {
 	zip: JSZip;
 	plate: PlateDetail;
 	plateLabel: string;
+	/** Index of this plate inside its source file. */
+	plateIndex: number;
 };
 
 export type SlotStat = {

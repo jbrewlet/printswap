@@ -3,14 +3,14 @@ import { basename, join } from 'node:path';
 import JSZip from 'jszip';
 import SparkMD5 from 'spark-md5';
 import { describe, expect, it } from 'vitest';
-import { MODEL_SETTINGS_SWAP, SWAP_GCODE_BLOCK } from '#lib/constants/swap-gcode.js';
+import { SWAP_GCODE_BLOCK } from '#lib/constants/swap-gcode.js';
 import { localSample3mfPath } from '../../../e2e/local-sample.ts';
 import {
 	buildExportPayload,
 	countSwapInsertionsFromJobs,
 	exportFlow3mfFromPayload
 } from './export-3mf.js';
-import { flowOutputFileName } from './filename.js';
+import { swapOutputFileName } from './filename.js';
 import { ingest3mfFile } from './ingest.js';
 import { entriesFromProcessedFile } from './queue.js';
 
@@ -24,8 +24,8 @@ describe('real local 3MF (manual sanity)', () => {
 		const processed = await ingest3mfFile(file);
 
 		expect(processed.fileName).toBe(sampleName);
-		const outputName = flowOutputFileName(processed.fileName);
-		expect(outputName.endsWith('.flow.3mf')).toBe(true);
+		const outputName = swapOutputFileName(processed.fileName);
+		expect(outputName.endsWith('.swap.3mf')).toBe(true);
 		expect(outputName.includes('.gcode')).toBe(false);
 		expect(processed.plateDetails.length).toBeGreaterThan(0);
 		for (const plate of processed.plateDetails) {
@@ -37,7 +37,7 @@ describe('real local 3MF (manual sanity)', () => {
 		const payload = await buildExportPayload(queue, 1);
 		const blob = await exportFlow3mfFromPayload(payload);
 		writeFileSync(
-			join('/tmp', flowOutputFileName(sampleName)),
+			join('/tmp', swapOutputFileName(sampleName)),
 			Buffer.from(await blob.arrayBuffer())
 		);
 
@@ -50,9 +50,12 @@ describe('real local 3MF (manual sanity)', () => {
 		const merged = await zip.file('Metadata/plate_1.gcode')?.async('string');
 		const md5 = await zip.file('Metadata/plate_1.gcode.md5')?.async('string');
 
-		expect(model).toBe(MODEL_SETTINGS_SWAP);
-		expect(slice).toContain('used_m="0"');
-		expect(slice).toContain('used_g="0"');
+		expect(model).toContain('plater_name" value="SWAP"');
+		expect(model).toContain('filament_maps" value="1"');
+		expect(slice).toMatch(/<filament\b[^>]*\btype="[^"]+"/);
+		expect(slice).toMatch(/<filament\b[^>]*\bcolor="#[0-9A-Fa-f]+"/);
+		expect(slice).toMatch(/used_g="(?!0(?:\.00)?")[0-9.]+"/);
+		expect(slice).toContain('used_for_object="true"');
 		expect(merged!.split(SWAP_GCODE_BLOCK).length - 1).toBe(
 			countSwapInsertionsFromJobs(payload.jobs, 1)
 		);

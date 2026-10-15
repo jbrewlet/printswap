@@ -9,7 +9,8 @@
 		canMoveDown = false,
 		onRemove,
 		onMoveUp,
-		onMoveDown
+		onMoveDown,
+		onRepeatChange
 	}: {
 		position: number;
 		entry: QueueEntry;
@@ -18,6 +19,7 @@
 		onRemove: () => void;
 		onMoveUp: () => void;
 		onMoveDown: () => void;
+		onRepeatChange?: () => void;
 	} = $props();
 
 	const fileNameParts = $derived(entry.fileName.split(/(?<=[.\-_ ])/));
@@ -30,10 +32,12 @@
 
 	function decrementRepeat() {
 		entry.plate.repeatCount = Math.max(1, entry.plate.repeatCount - 1);
+		onRepeatChange?.();
 	}
 
 	function incrementRepeat() {
 		entry.plate.repeatCount += 1;
+		onRepeatChange?.();
 	}
 </script>
 

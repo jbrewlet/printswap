@@ -268,7 +268,7 @@
 							d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"
 						/>
 					</svg>
-					<span>Generate .flow.3mf</span>
+					<span>Generate .swap.3mf</span>
 				{/if}
 			</span>
 		</button>
@@ -287,7 +287,7 @@
 					d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5"
 				/>
 			</svg>
-			Reset queue
+			Clear queue
 		</button>
 	</div>
 </aside>

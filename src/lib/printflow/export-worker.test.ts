@@ -35,6 +35,11 @@ describe('worker export payload', () => {
 		const queue = entriesFromProcessedFile(processed);
 		const payload = await buildWorkerExportPayload(queue, 2);
 		expect(() => assertStructuredCloneable(payload)).not.toThrow();
+		expect(payload.sliceInfoText).toContain('tray_info_idx="GFG99"');
+		expect(payload.sliceInfoText).toContain('type="PETG"');
+		expect(payload.sliceInfoText).toContain('used_m="21.00"');
+		expect(payload.sliceInfoText).toContain('used_g="64.20"');
+		expect(payload.modelSettingsText).toBeDefined();
 	});
 
 	it('cloneExportPayloadForWorker fixes non-cloneable job arrays', async () => {

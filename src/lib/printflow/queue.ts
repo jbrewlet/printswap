@@ -7,7 +7,8 @@ export function entriesFromProcessedFile(processed: ProcessedFile): QueueEntry[]
 		fileName: processed.fileName,
 		zip: processed.file,
 		plate,
-		plateLabel: `Plate ${index + 1}`
+		plateLabel: `Plate ${index + 1}`,
+		plateIndex: index
 	}));
 }
 

@@ -11,6 +11,17 @@ export class IngestError extends Error {
 	}
 }
 
+function readElementAttributes(node: Element): Record<string, string> {
+	const attributes: Record<string, string> = {};
+	for (let index = 0; index < node.attributes.length; index++) {
+		const attr = node.attributes.item(index);
+		if (attr) {
+			attributes[attr.name] = attr.value;
+		}
+	}
+	return attributes;
+}
+
 function readFilamentsForPlate(sliceInfoDoc: Document, plateIndex: number): FilamentUsage[] {
 	const indexSelector = `[key='index'][value='${plateIndex + 1}']`;
 	const indexNodes = sliceInfoDoc.querySelectorAll(indexSelector);
@@ -30,7 +41,14 @@ function readFilamentsForPlate(sliceInfoDoc: Document, plateIndex: number): Fila
 		const used_m = node.getAttribute('used_m');
 		const used_g = node.getAttribute('used_g');
 		if (color && id && type && used_m && used_g) {
-			filaments.push({ id, type, color, used_m, used_g });
+			filaments.push({
+				id,
+				type,
+				color,
+				used_m,
+				used_g,
+				sliceAttributes: readElementAttributes(node)
+			});
 		}
 	}
 	return filaments;
